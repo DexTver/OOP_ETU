@@ -5,12 +5,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 
+import Exceptions.EmptySearchException;
+
 /**
  * Программа для работы с данными о водителях и их нарушениях.
  * Содержит функции добавления, редактирования, удаления записей, а также сохранения и загрузки данных в файл.
  *
  * @author Шарапов Иван 3312
- * @version 1.1
+ * @version 1.2
  */
 public class Main {
     private JFrame mainFrame;
@@ -81,7 +83,7 @@ public class Main {
         mainFrame.add(scrollPane, BorderLayout.CENTER); // Размещаем таблицу в центре окна
 
         // Элементы поиска: поле ввода и кнопка "Поиск"
-        searchTypeComboBox = new JComboBox<>(new String[]{"По имени", "По номеру машины"});
+        searchTypeComboBox = new JComboBox<>(new String[]{"По имени", "По номеру машины", "По дате нарушения", "По типу нарушения"});
         searchField = new JTextField(15);
         JButton searchButton = new JButton("Поиск");
 
@@ -145,6 +147,21 @@ public class Main {
             }
         });
 
+        // "Поиск" — выполнает поиск в таблице, по введённой строке
+        searchButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                    validateSearchField(searchField);  // Проверка значений в поле поиска
+                    performSearch(searchField.getText());  // Выполнение поиска по введенному тексту
+                } catch (NullPointerException ex) {
+                    JOptionPane.showMessageDialog(mainFrame, ex.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+                } catch (EmptySearchException ex) {
+                    JOptionPane.showMessageDialog(mainFrame, ex.getMessage(), "Ошибка", JOptionPane.WARNING_MESSAGE);
+                }
+            }
+        });
+
         mainFrame.setVisible(true); // Делаем главное окно видимым
     }
 
@@ -186,6 +203,79 @@ public class Main {
             JOptionPane.showMessageDialog(mainFrame, "Данные успешно загружены!"); // Сообщение об успешной загрузке
         } catch (IOException e) {
             JOptionPane.showMessageDialog(mainFrame, "Ошибка при загрузке данных."); // Сообщение об ошибке
+        }
+    }
+
+    /**
+     * Возвращает индекс столбца для поиска на основе выбранного поля.
+     *
+     * @param selectedField Поле, выбранное пользователем в JComboBox для поиска
+     * @return Индекс столбца для поиска, или -1, если поле не распознано
+     */
+    private int getColumnIndex(String selectedField) {
+        switch (selectedField) {
+            case "По имени":
+                return 0; // Индекс столбца с ФИО водителя
+            case "По номеру машины":
+                return 1; // Индекс столбца с номером машины
+            case "По дате нарушения":
+                return 2; // Индекс столбца с датой нарушения
+            case "По типу нарушения":
+                return 3; // Индекс столбца с типом нарушения
+            default:
+                return -1;
+        }
+    }
+
+    /**
+     * Проверяет значение в поле поиска и генерирует исключения, если поле пустое или содержит null.
+     *
+     * @param searchField Поле ввода текста для поиска
+     * @throws EmptySearchException Если поле ввода пустое
+     * @throws NullPointerException Если значение в поле null
+     */
+    private void validateSearchField(JTextField searchField) throws EmptySearchException, NullPointerException {
+        String searchText = searchField.getText();
+        if (searchText == null) {
+            throw new NullPointerException("Поисковый запрос отсутствует");
+        }
+        if (searchText.isEmpty()) {
+            throw new EmptySearchException();
+        }
+    }
+
+    /**
+     * Выполняет поиск по таблице и выделяет все строки, содержащие указанный текст в выбранном поле, без учета регистра.
+     *
+     * @param query Строка для поиска
+     */
+    private void performSearch(String query) {
+        dataTable.clearSelection(); // Снимаем предыдущее выделение
+        boolean found = false;
+
+        // Приводим запрос к нижнему регистру
+        String lowerCaseQuery = query.toLowerCase();
+
+        // Получаем индекс столбца для поиска
+        int columnIndex = getColumnIndex((String) searchTypeComboBox.getSelectedItem());
+        if (columnIndex == -1) {
+            JOptionPane.showMessageDialog(mainFrame, "Некорректное поле для поиска", "Ошибка", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Проходим по всем строкам, но только в выбранном столбце
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            String cellValue = tableModel.getValueAt(i, columnIndex).toString().toLowerCase();
+
+            // Если значение ячейки содержит искомый текст без учета регистра
+            if (cellValue.contains(lowerCaseQuery)) {
+                dataTable.addRowSelectionInterval(i, i); // Выделяем строку
+                found = true;
+            }
+        }
+
+        if (!found) {
+            JOptionPane.showMessageDialog(mainFrame, "Совпадения не найдены", "Результат поиска", JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
