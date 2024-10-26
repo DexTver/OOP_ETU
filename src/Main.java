@@ -5,14 +5,14 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 
-import Exceptions.EmptySearchException;
+import Exceptions.*;
 
 /**
  * Программа для работы с данными о водителях и их нарушениях.
  * Содержит функции добавления, редактирования, удаления записей, а также сохранения и загрузки данных в файл.
  *
  * @author Шарапов Иван 3312
- * @version 1.2
+ * @version 1.3
  */
 public class Main {
     private JFrame mainFrame;
@@ -99,7 +99,7 @@ public class Main {
         addDriverButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JOptionPane.showMessageDialog(mainFrame, "Добавление новой записи");
+                new RecordDialog(mainFrame, tableModel, -1).setVisible(true); // -1 означает, что это добавление новой записи
             }
         });
 
@@ -107,7 +107,17 @@ public class Main {
         editDriverButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JOptionPane.showMessageDialog(mainFrame, "Редактирование выбранной записи");
+                int[] selectedRows = dataTable.getSelectedRows();
+
+                // Проверка, что выбрана ровно одна строка
+                if (selectedRows.length != 1) {
+                    JOptionPane.showMessageDialog(mainFrame, "Пожалуйста, выберите только одну строку для редактирования.", "Ошибка", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                // Открытие диалогового окна для редактирования выбранной строки
+                int selectedRow = selectedRows[0];
+                new RecordDialog(mainFrame, tableModel, selectedRow).setVisible(true);
             }
         });
 
@@ -115,7 +125,22 @@ public class Main {
         deleteDriverButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                JOptionPane.showMessageDialog(mainFrame, "Удаление выбранной записи");
+                // Проверяем, есть ли выделенные строки
+                int[] selectedRows = dataTable.getSelectedRows();
+                if (selectedRows.length == 0) {
+                    JOptionPane.showMessageDialog(mainFrame, "Нет выделенных строк для удаления.", "Ошибка", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                // Запрос подтверждения у пользователя
+                int confirm = JOptionPane.showConfirmDialog(mainFrame, "Вы уверены, что хотите удалить выделенные строки?", "Подтверждение удаления", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
+                    // Удаляем строки с конца списка, чтобы избежать смещения индексов
+                    for (int i = selectedRows.length - 1; i >= 0; i--) {
+                        tableModel.removeRow(selectedRows[i]);
+                    }
+                    JOptionPane.showMessageDialog(mainFrame, "Выделенные строки успешно удалены.", "Удаление", JOptionPane.INFORMATION_MESSAGE);
+                }
             }
         });
 
@@ -166,6 +191,26 @@ public class Main {
     }
 
     /**
+     * Загружает данные из указанного файла в таблицу.
+     *
+     * @param file Файл, из которого будут загружены данные.
+     */
+    private void loadDataFromFile(File file) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            tableModel.setRowCount(0);  // Очищаем текущие данные таблицы перед загрузкой новых
+            while ((line = reader.readLine()) != null) {
+                // Разделяем строку по табуляциям, чтобы получить значения для каждой колонки
+                String[] rowData = line.split("\t");
+                tableModel.addRow(rowData); // Добавляем новую строку в таблицу
+            }
+            JOptionPane.showMessageDialog(mainFrame, "Данные успешно загружены!"); // Сообщение об успешной загрузке
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(mainFrame, "Ошибка при загрузке данных."); // Сообщение об ошибке
+        }
+    }
+
+    /**
      * Сохраняет данные из таблицы в указанный файл.
      *
      * @param file Файл, в который будут сохранены данные.
@@ -183,26 +228,6 @@ public class Main {
             JOptionPane.showMessageDialog(mainFrame, "Данные успешно сохранены!"); // Сообщение об успешном сохранении
         } catch (IOException e) {
             JOptionPane.showMessageDialog(mainFrame, "Ошибка при сохранении данных."); // Сообщение об ошибке
-        }
-    }
-
-    /**
-     * Загружает данные из указанного файла в таблицу.
-     *
-     * @param file Файл, из которого будут загружены данные.
-     */
-    private void loadDataFromFile(File file) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            tableModel.setRowCount(0);  // Очищаем текущие данные таблицы перед загрузкой новых
-            while ((line = reader.readLine()) != null) {
-                // Разделяем строку по табуляциям, чтобы получить значения для каждой колонки
-                String[] rowData = line.split("\t");
-                tableModel.addRow(rowData); // Добавляем новую строку в таблицу
-            }
-            JOptionPane.showMessageDialog(mainFrame, "Данные успешно загружены!"); // Сообщение об успешной загрузке
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(mainFrame, "Ошибка при загрузке данных."); // Сообщение об ошибке
         }
     }
 
