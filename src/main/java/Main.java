@@ -27,7 +27,7 @@ import Exceptions.*;
  * Содержит функции добавления, редактирования, удаления записей, а также сохранения и загрузки данных в файл.
  *
  * @author Шарапов Иван 3312
- * @version 1.3
+ * @version 1.6
  */
 public class Main {
     private JFrame mainFrame;
@@ -36,6 +36,9 @@ public class Main {
     private JButton addDriverButton, editDriverButton, deleteDriverButton, loadDriverButton, saveDriverButton, generateReportButton;
     private JTextField searchField;
     private JComboBox<String> searchTypeComboBox;
+
+    private final Object syncObject = new Object();
+    private boolean isDataLoaded = false;
 
     /**
      * Конструктор класса Main.
@@ -62,7 +65,7 @@ public class Main {
         deleteDriverButton = new JButton("Удалить");
         loadDriverButton = new JButton("Загрузить");
         saveDriverButton = new JButton("Сохранить");
-        generateReportButton = new JButton("Сформировать отчет");
+        generateReportButton = new JButton("Сформировать отчёт");
 
         // Панель инструментов, которая содержит кнопки
         JToolBar toolBar = new JToolBar("Toolbar");
@@ -155,99 +158,6 @@ public class Main {
             }
         });
 
-        // "Загрузить" — открывает диалоговое окно для выбора файла и загружает данные в таблицу
-        loadDriverButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
-            fileChooser.setDialogTitle("Открыть XML файл");
-            fileChooser.setFileFilter(new FileNameExtensionFilter("XML файлы", "xml"));
-
-            int userSelection = fileChooser.showOpenDialog(mainFrame);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToLoad = fileChooser.getSelectedFile();
-
-                try {
-                    // Читаем XML-документ
-                    DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-                    DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-                    Document doc = dBuilder.parse(fileToLoad);
-                    doc.getDocumentElement().normalize();
-
-                    tableModel.setRowCount(0);
-
-                    NodeList driverNodes = doc.getElementsByTagName("driver");
-
-                    for (int i = 0; i < driverNodes.getLength(); i++) {
-                        Node node = driverNodes.item(i);
-                        NamedNodeMap attributes = node.getAttributes();
-
-                        String name = attributes.getNamedItem("name").getNodeValue();
-                        String license = attributes.getNamedItem("license").getNodeValue();
-                        String violationDate = attributes.getNamedItem("violationDate").getNodeValue();
-                        String violationType = attributes.getNamedItem("violationType").getNodeValue();
-
-                        tableModel.addRow(new Object[]{name, license, violationDate, violationType});
-                    }
-
-                    JOptionPane.showMessageDialog(mainFrame, "Данные успешно загружены из XML файла.");
-                } catch (ParserConfigurationException | SAXException | IOException ex) {
-                    JOptionPane.showMessageDialog(mainFrame, "Ошибка при загрузке данных из XML файла.", "Ошибка", JOptionPane.ERROR_MESSAGE);
-                    ex.printStackTrace();
-                }
-            }
-        });
-
-        // "Сохранить" — открывает диалоговое окно для сохранения файла и записывает данные таблицы в файл
-        saveDriverButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
-            fileChooser.setDialogTitle("Сохранить как XML");
-            fileChooser.setFileFilter(new FileNameExtensionFilter("XML файлы", "xml"));
-
-            int userSelection = fileChooser.showSaveDialog(mainFrame);
-            if (userSelection == JFileChooser.APPROVE_OPTION) {
-                File fileToSave = fileChooser.getSelectedFile();
-                if (!fileToSave.getAbsolutePath().endsWith(".xml")) {
-                    fileToSave = new File(fileToSave + ".xml"); // Добавляем расширение .xml, если отсутствует
-                }
-
-                try {
-                    // Создаем XML-документ
-                    DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-                    DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-                    Document doc = dBuilder.newDocument();
-
-                    Element rootElement = doc.createElement("drivers");
-                    doc.appendChild(rootElement);
-
-                    for (int i = 0; i < tableModel.getRowCount(); i++) {
-                        Element driver = doc.createElement("driver");
-
-                        driver.setAttribute("name", (String) tableModel.getValueAt(i, 0));
-                        driver.setAttribute("license", (String) tableModel.getValueAt(i, 1));
-                        driver.setAttribute("violationDate", (String) tableModel.getValueAt(i, 2));
-                        driver.setAttribute("violationType", (String) tableModel.getValueAt(i, 3));
-
-                        rootElement.appendChild(driver);
-                    }
-
-                    // Сохраняем XML-документ в файл
-                    TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                    Transformer transformer = transformerFactory.newTransformer();
-                    DOMSource source = new DOMSource(doc);
-                    StreamResult result = new StreamResult(fileToSave);
-                    transformer.transform(source, result);
-
-                    JOptionPane.showMessageDialog(mainFrame, "Данные успешно сохранены в XML файл.");
-                } catch (ParserConfigurationException | TransformerException ex) {
-                    JOptionPane.showMessageDialog(mainFrame, "Ошибка при сохранении данных в XML файл.", "Ошибка", JOptionPane.ERROR_MESSAGE);
-                    ex.printStackTrace();
-                }
-            }
-        });
-
-        generateReportButton.addActionListener(e -> generateHtmlReport());
-
         // "Поиск" — выполняет поиск в таблице, по введённой строке
         searchButton.addActionListener(new ActionListener() {
             @Override
@@ -263,48 +173,25 @@ public class Main {
             }
         });
 
+        // "Загрузить" — открывает диалоговое окно для выбора файла и загружает данные в таблицу
+        loadDriverButton.addActionListener(e -> {
+            Thread loadDataThread = createLoadDataThread();
+            loadDataThread.start();
+        });
+
+        // "Сохранить" — открывает диалоговое окно для сохранения файла и записывает данные таблицы в файл
+        saveDriverButton.addActionListener(e -> {
+            Thread saveDataThread = createSaveDataThread();
+            saveDataThread.start();
+        });
+
+        // "Сформировать отчёт" - генерирует отчёт в формате HTML
+        generateReportButton.addActionListener(e -> {
+            Thread generateReportThread = createGenerateReportThread();
+            generateReportThread.start();
+        });
+
         mainFrame.setVisible(true); // Делаем главное окно видимым
-    }
-
-    /**
-     * Загружает данные из указанного файла в таблицу.
-     *
-     * @param file Файл, из которого будут загружены данные.
-     */
-    private void loadDataFromFile(File file) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            tableModel.setRowCount(0);  // Очищаем текущие данные таблицы перед загрузкой новых
-            while ((line = reader.readLine()) != null) {
-                // Разделяем строку по табуляциям, чтобы получить значения для каждой колонки
-                String[] rowData = line.split("\t");
-                tableModel.addRow(rowData); // Добавляем новую строку в таблицу
-            }
-            JOptionPane.showMessageDialog(mainFrame, "Данные успешно загружены!"); // Сообщение об успешной загрузке
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(mainFrame, "Ошибка при загрузке данных."); // Сообщение об ошибке
-        }
-    }
-
-    /**
-     * Сохраняет данные из таблицы в указанный файл.
-     *
-     * @param file Файл, в который будут сохранены данные.
-     */
-    private void saveDataToFile(File file) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-            // Проходим по каждой строке таблицы
-            for (int row = 0; row < tableModel.getRowCount(); row++) {
-                for (int col = 0; col < tableModel.getColumnCount(); col++) {
-                    // Записываем значения ячеек таблицы в файл через табуляцию
-                    writer.write(tableModel.getValueAt(row, col).toString() + "\t");
-                }
-                writer.newLine(); // Переход на новую строку после каждой записи
-            }
-            JOptionPane.showMessageDialog(mainFrame, "Данные успешно сохранены!"); // Сообщение об успешном сохранении
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(mainFrame, "Ошибка при сохранении данных."); // Сообщение об ошибке
-        }
     }
 
     /**
@@ -377,6 +264,139 @@ public class Main {
 
         if (!found) {
             JOptionPane.showMessageDialog(mainFrame, "Совпадения не найдены", "Результат поиска", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private Thread createLoadDataThread() {
+        return new Thread(() -> {
+            synchronized (syncObject) {
+                loadData(); // Загрузка данных
+                isDataLoaded = true; // Флаг завершения
+                syncObject.notifyAll(); // Уведомляем другие потоки
+            }
+        });
+    }
+
+    private Thread createSaveDataThread() {
+        return new Thread(() -> {
+            synchronized (syncObject) {
+                try {
+                    while (!isDataLoaded) {
+                        syncObject.wait(); // Ждем завершения загрузки
+                    }
+                    saveData(); // Сохранение данных
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    private Thread createGenerateReportThread() {
+        return new Thread(() -> {
+            synchronized (syncObject) {
+                try {
+                    while (!isDataLoaded) {
+                        syncObject.wait(); // Ждем завершения загрузки
+                        // * Поставленная в лабораторной работе задача ломает логику программы
+                        // Ведь отчёт генерируется по данным из таблички, а не XML
+                        // Потому что пользователь может сохранить XML куда угодно
+                        // А может и не сохранить совсем
+                    }
+                    generateHtmlReport(); // Генерация отчёта
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    private void loadData() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
+        fileChooser.setDialogTitle("Открыть XML файл");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("XML файлы", "xml"));
+
+        int userSelection = fileChooser.showOpenDialog(mainFrame);
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToLoad = fileChooser.getSelectedFile();
+
+            try {
+                // Читаем XML-документ
+                DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+                DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+                Document doc = dBuilder.parse(fileToLoad);
+                doc.getDocumentElement().normalize();
+
+                tableModel.setRowCount(0);
+
+                NodeList driverNodes = doc.getElementsByTagName("driver");
+
+                for (int i = 0; i < driverNodes.getLength(); i++) {
+                    Node node = driverNodes.item(i);
+                    NamedNodeMap attributes = node.getAttributes();
+
+                    String name = attributes.getNamedItem("name").getNodeValue();
+                    String license = attributes.getNamedItem("license").getNodeValue();
+                    String violationDate = attributes.getNamedItem("violationDate").getNodeValue();
+                    String violationType = attributes.getNamedItem("violationType").getNodeValue();
+
+                    tableModel.addRow(new Object[]{name, license, violationDate, violationType});
+                }
+
+                JOptionPane.showMessageDialog(mainFrame, "Данные успешно загружены из XML файла.");
+            } catch (ParserConfigurationException | SAXException | IOException ex) {
+                JOptionPane.showMessageDialog(mainFrame, "Ошибка при загрузке данных из XML файла.", "Ошибка", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    private void saveData() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
+        fileChooser.setDialogTitle("Сохранить как XML");
+        fileChooser.setFileFilter(new FileNameExtensionFilter("XML файлы", "xml"));
+
+        int userSelection = fileChooser.showSaveDialog(mainFrame);
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToSave = fileChooser.getSelectedFile();
+            if (!fileToSave.getAbsolutePath().endsWith(".xml")) {
+                fileToSave = new File(fileToSave + ".xml"); // Добавляем расширение .xml, если отсутствует
+            }
+
+            try {
+                // Создаем XML-документ
+                DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+                DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+                Document doc = dBuilder.newDocument();
+
+                Element rootElement = doc.createElement("drivers");
+                doc.appendChild(rootElement);
+
+                for (int i = 0; i < tableModel.getRowCount(); i++) {
+                    Element driver = doc.createElement("driver");
+
+                    driver.setAttribute("name", (String) tableModel.getValueAt(i, 0));
+                    driver.setAttribute("license", (String) tableModel.getValueAt(i, 1));
+                    driver.setAttribute("violationDate", (String) tableModel.getValueAt(i, 2));
+                    driver.setAttribute("violationType", (String) tableModel.getValueAt(i, 3));
+
+                    rootElement.appendChild(driver);
+                }
+
+                // Сохраняем XML-документ в файл
+                TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                Transformer transformer = transformerFactory.newTransformer();
+                DOMSource source = new DOMSource(doc);
+                StreamResult result = new StreamResult(fileToSave);
+                transformer.transform(source, result);
+
+                JOptionPane.showMessageDialog(mainFrame, "Данные успешно сохранены в XML файл.");
+            } catch (ParserConfigurationException | TransformerException ex) {
+                JOptionPane.showMessageDialog(mainFrame, "Ошибка при сохранении данных в XML файл.", "Ошибка", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
         }
     }
 
