@@ -248,7 +248,7 @@ public class Main {
 
         generateReportButton.addActionListener(e -> generateHtmlReport());
 
-        // "Поиск" — выполнает поиск в таблице, по введённой строке
+        // "Поиск" — выполняет поиск в таблице, по введённой строке
         searchButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -380,6 +380,9 @@ public class Main {
         }
     }
 
+    /**
+     * Генерирует HTML-отчет на основе данных из таблицы.
+     */
     private void generateHtmlReport() {
         try {
             // Путь к шаблону отчета
