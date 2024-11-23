@@ -4,15 +4,21 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import java.util.HashMap;
 
 import org.w3c.dom.*;
+import org.xml.sax.SAXException;
 
 import javax.xml.parsers.*;
 import javax.xml.transform.*;
 import javax.xml.transform.dom.*;
 import javax.xml.transform.stream.*;
 
-import org.xml.sax.SAXException;
+import net.sf.jasperreports.engine.*;
+import net.sf.jasperreports.engine.data.JRTableModelDataSource;
+import net.sf.jasperreports.engine.export.HtmlExporter;
+import net.sf.jasperreports.export.SimpleExporterInput;
+import net.sf.jasperreports.export.SimpleHtmlExporterOutput;
 
 import Exceptions.*;
 
@@ -27,7 +33,7 @@ public class Main {
     private JFrame mainFrame;
     private DefaultTableModel tableModel;
     private JTable dataTable;
-    private JButton addDriverButton, editDriverButton, deleteDriverButton, loadDriverButton, saveDriverButton;
+    private JButton addDriverButton, editDriverButton, deleteDriverButton, loadDriverButton, saveDriverButton, generateReportButton;
     private JTextField searchField;
     private JComboBox<String> searchTypeComboBox;
 
@@ -56,6 +62,7 @@ public class Main {
         deleteDriverButton = new JButton("Удалить");
         loadDriverButton = new JButton("Загрузить");
         saveDriverButton = new JButton("Сохранить");
+        generateReportButton = new JButton("Сформировать отчет");
 
         // Панель инструментов, которая содержит кнопки
         JToolBar toolBar = new JToolBar("Toolbar");
@@ -72,6 +79,7 @@ public class Main {
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         rightPanel.add(loadDriverButton);
         rightPanel.add(saveDriverButton);
+        rightPanel.add(generateReportButton);
         toolBar.add(rightPanel, BorderLayout.EAST); // Размещаем в правой части панели
 
         mainFrame.setLayout(new BorderLayout());
@@ -238,6 +246,8 @@ public class Main {
             }
         });
 
+        generateReportButton.addActionListener(e -> generateHtmlReport());
+
         // "Поиск" — выполнает поиск в таблице, по введённой строке
         searchButton.addActionListener(new ActionListener() {
             @Override
@@ -367,6 +377,40 @@ public class Main {
 
         if (!found) {
             JOptionPane.showMessageDialog(mainFrame, "Совпадения не найдены", "Результат поиска", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private void generateHtmlReport() {
+        try {
+            // Путь к шаблону отчета
+            String jrxmlPath = "src/main/resources/GAI.jrxml";
+
+            // Компиляция шаблона отчета
+            JasperReport jasperReport = JasperCompileManager.compileReport(jrxmlPath);
+
+            // Подготовка данных для отчета из таблицы
+            JRTableModelDataSource dataSource = new JRTableModelDataSource(tableModel);
+
+            // Параметры для отчета (если нужны)
+            HashMap<String, Object> parameters = new HashMap<>();
+            parameters.put("ReportTitle", "Отчет о данных ГАИ");
+            parameters.put("Author", "GAI System");
+
+            // Заполнение отчета
+            JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, dataSource);
+
+            // Генерация HTML-отчета
+            String outputFilePath = "report.html";
+            HtmlExporter exporter = new HtmlExporter();
+            exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+            exporter.setExporterOutput(new SimpleHtmlExporterOutput(outputFilePath));
+
+            exporter.exportReport();
+
+            JOptionPane.showMessageDialog(mainFrame, "HTML-отчет успешно создан: " + outputFilePath);
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(mainFrame, "Ошибка при создании отчета: " + e.getMessage());
         }
     }
 
