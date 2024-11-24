@@ -33,7 +33,6 @@ public class Main {
     private JFrame mainFrame;
     private DefaultTableModel tableModel;
     private JTable dataTable;
-    private JButton addDriverButton, editDriverButton, deleteDriverButton, loadDriverButton, saveDriverButton, generateReportButton;
     private JTextField searchField;
     private JComboBox<String> searchTypeComboBox;
 
@@ -45,7 +44,6 @@ public class Main {
      * Инициализирует основное окно приложения для работы с данными.
      */
     public Main() {
-        // Конструктор по умолчанию, который инициализирует класс Main.
     }
 
     /**
@@ -60,12 +58,12 @@ public class Main {
         mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // Создание кнопок для управления записями
-        addDriverButton = new JButton("Добавить");
-        editDriverButton = new JButton("Редактировать");
-        deleteDriverButton = new JButton("Удалить");
-        loadDriverButton = new JButton("Загрузить");
-        saveDriverButton = new JButton("Сохранить");
-        generateReportButton = new JButton("Сформировать отчёт");
+        JButton addDriverButton = new JButton("Добавить");
+        JButton editDriverButton = new JButton("Редактировать");
+        JButton deleteDriverButton = new JButton("Удалить");
+        JButton loadDriverButton = new JButton("Загрузить");
+        JButton saveDriverButton = new JButton("Сохранить");
+        JButton generateReportButton = new JButton("Сформировать отчёт");
 
         // Панель инструментов, которая содержит кнопки
         JToolBar toolBar = new JToolBar("Toolbar");
@@ -86,7 +84,7 @@ public class Main {
         toolBar.add(rightPanel, BorderLayout.EAST); // Размещаем в правой части панели
 
         mainFrame.setLayout(new BorderLayout());
-        mainFrame.add(toolBar, BorderLayout.NORTH); // Размещение панели инструментов сверху
+        mainFrame.add(toolBar, BorderLayout.NORTH); // Размещение панель инструментов сверху
 
         // Создание таблицы для отображения данных
         String[] columns = {"ФИО водителя", "Номер машины", "Дата нарушения", "Тип нарушения"};
@@ -109,7 +107,7 @@ public class Main {
 
         // Добавляем действия для кнопок
 
-        // "Добавить" — действие для добавления новой записи
+        // "Добавить" — выполняет добавление новой записи
         addDriverButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -117,7 +115,7 @@ public class Main {
             }
         });
 
-        // "Редактировать" — действие для редактирования выбранной записи
+        // "Редактировать" — выполняет редактирование выбранной записи
         editDriverButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -135,7 +133,7 @@ public class Main {
             }
         });
 
-        // "Удалить" — действие для удаления выбранной записи
+        // "Удалить" — выполняет удаление выбранных записей
         deleteDriverButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -191,7 +189,8 @@ public class Main {
             generateReportThread.start();
         });
 
-        mainFrame.setVisible(true); // Делаем главное окно видимым
+        // Делаем главное окно видимым
+        mainFrame.setVisible(true);
     }
 
     /**
@@ -233,9 +232,10 @@ public class Main {
     }
 
     /**
-     * Выполняет поиск по таблице и выделяет все строки, содержащие указанный текст в выбранном поле, без учета регистра.
+     * Выполняет поиск в таблице по указанному тексту.
+     * Если совпадения найдены, строки выделяются.
      *
-     * @param query Строка для поиска
+     * @param query Строка для поиска.
      */
     private void performSearch(String query) {
         dataTable.clearSelection(); // Снимаем предыдущее выделение
@@ -267,6 +267,12 @@ public class Main {
         }
     }
 
+    /**
+     * Создает поток для загрузки данных из XML-файла.
+     * Поток синхронизирован и уведомляет другие потоки о завершении загрузки данных.
+     *
+     * @return Поток для загрузки данных.
+     */
     private Thread createLoadDataThread() {
         return new Thread(() -> {
             synchronized (syncObject) {
@@ -277,6 +283,12 @@ public class Main {
         });
     }
 
+    /**
+     * Создает поток для сохранения данных таблицы в XML-файл.
+     * Поток ожидает завершения загрузки данных перед началом работы.
+     *
+     * @return Поток для сохранения данных.
+     */
     private Thread createSaveDataThread() {
         return new Thread(() -> {
             synchronized (syncObject) {
@@ -292,13 +304,19 @@ public class Main {
         });
     }
 
+    /**
+     * Создает поток для генерации HTML-отчета на основе данных таблицы.
+     * Поток ожидает завершения загрузки данных перед началом работы.
+     *
+     * @return Поток для генерации отчета.
+     */
     private Thread createGenerateReportThread() {
         return new Thread(() -> {
             synchronized (syncObject) {
                 try {
                     while (!isDataLoaded) {
                         syncObject.wait(); // Ждем завершения загрузки
-                        // * Поставленная в лабораторной работе задача ломает логику программы
+                        // *Поставленная в лабораторной работе задача ломает логику программы
                         // Ведь отчёт генерируется по данным из таблички, а не XML
                         // Потому что пользователь может сохранить XML куда угодно
                         // А может и не сохранить совсем
@@ -311,6 +329,10 @@ public class Main {
         });
     }
 
+    /**
+     * Загружает данные из XML-файла и добавляет их в таблицу.
+     * Отображает диалоговое окно для выбора файла и обрабатывает ошибки загрузки.
+     */
     private void loadData() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
@@ -352,6 +374,13 @@ public class Main {
         }
     }
 
+    /**
+     * Сохраняет данные из таблицы в XML-файл.
+     * <p>
+     * Показывает диалоговое окно для выбора файла, затем записывает текущие
+     * данные из таблицы в указанный файл в формате XML. Обрабатывает возможные
+     * ошибки при сохранении файла.
+     */
     private void saveData() {
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setCurrentDirectory(new File(System.getProperty("user.dir")));
@@ -362,7 +391,8 @@ public class Main {
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToSave = fileChooser.getSelectedFile();
             if (!fileToSave.getAbsolutePath().endsWith(".xml")) {
-                fileToSave = new File(fileToSave + ".xml"); // Добавляем расширение .xml, если отсутствует
+                // Добавляем расширение .xml, если отсутствует
+                fileToSave = new File(fileToSave + ".xml");
             }
 
             try {
@@ -401,7 +431,11 @@ public class Main {
     }
 
     /**
-     * Генерирует HTML-отчет на основе данных из таблицы.
+     * Генерирует HTML-отчет на основе данных таблицы.
+     * <p>
+     * Создает отчёт в формате HTML, используя текущие данные из таблицы.
+     * Отчет сохраняется в файл, расположенный в текущей рабочей директории.
+     * Обрабатывает возможные ошибки при создании отчета.
      */
     private void generateHtmlReport() {
         try {
