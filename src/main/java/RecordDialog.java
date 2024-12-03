@@ -7,6 +7,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Диалоговое окно для добавления или редактирования записи в таблице.
  */
@@ -36,6 +39,8 @@ public class RecordDialog extends JDialog {
      * Индекс строки для редактирования, -1 если добавляется новая запись.
      */
     private int rowIndex = -1;
+    private static final Logger logger = LogManager.getLogger(RecordDialog.class);
+
 
     /**
      * Конструктор для создания окна записи (добавление или редактирование).
@@ -107,17 +112,22 @@ public class RecordDialog extends JDialog {
      * @return true, если данные успешно сохранены, иначе false
      */
     private boolean validateAndSave() {
+        logger.info("Начата проверка данных формы редактирования.");
         if (nameField.getText().isEmpty() || licenseField.getText().isEmpty() ||
                 dateField.getText().isEmpty() || violationField.getText().isEmpty()) {
+            logger.warn("Проверка не пройдена: не все поля заполнены.");
             JOptionPane.showMessageDialog(this, "Все поля должны быть заполнены.", "Ошибка", JOptionPane.WARNING_MESSAGE);
             return false;
         }
+        logger.debug("Все поля заполнены.");
 
         // Проверка формата российского номера
         if (!licenseField.getText().matches("^[АВЕКМНОРСТУХ]{1}\\d{3}[АВЕКМНОРСТУХ]{2}\\d{2,3}$")) {
+            logger.warn("Проверка не пройдена: неверный формат номера '{}'.", licenseField.getText());
             JOptionPane.showMessageDialog(this, "Неверный формат номера. Введите российский номер (например, А123ВС77).", "Ошибка", JOptionPane.WARNING_MESSAGE);
             return false;
         }
+        logger.debug("Формат номера '{}' прошёл проверку.", licenseField.getText());
 
         // Проверка даты нарушения
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
@@ -125,33 +135,41 @@ public class RecordDialog extends JDialog {
         try {
             violationDate = LocalDate.parse(dateField.getText(), formatter);
         } catch (DateTimeParseException ex) {
+            logger.error("Неверный формат даты '{}'.", dateField.getText(), ex);
             JOptionPane.showMessageDialog(this, "Неверный формат даты. Используйте ДД.ММ.ГГГГ.", "Ошибка", JOptionPane.WARNING_MESSAGE);
             return false;
         }
 
+        logger.debug("Дата '{}' успешно распознана.", dateField.getText());
         LocalDate currentDate = LocalDate.now();
         LocalDate fiveYearsAgo = currentDate.minusYears(5);
 
         // Проверка: дата не должна быть в будущем и не старше 5 лет
         if (violationDate.isAfter(currentDate)) {
+            logger.warn("Дата нарушения '{}' больше текущей даты.", dateField.getText());
             JOptionPane.showMessageDialog(this, "Дата нарушения не может быть в будущем.", "Ошибка", JOptionPane.WARNING_MESSAGE);
             return false;
         } else if (violationDate.isBefore(fiveYearsAgo)) {
+            logger.warn("Дата нарушения '{}' старше 5 лет.", dateField.getText());
             JOptionPane.showMessageDialog(this, "Нарушение не должно быть старше 5 лет.", "Ошибка", JOptionPane.WARNING_MESSAGE);
             return false;
         }
+        logger.debug("Дата '{}' прошла проверку.", dateField.getText());
 
         // Сохранение данных
         if (rowIndex == -1) {
-            // Добавление новой записи
+            logger.info("Добавление новой записи: {}, {}, {}, {}.",
+                    nameField.getText(), licenseField.getText(), dateField.getText(), violationField.getText());
             tableModel.addRow(new Object[]{nameField.getText(), licenseField.getText(), dateField.getText(), violationField.getText()});
         } else {
-            // Обновление существующей записи
+            logger.info("Обновление записи в строке {}: {}, {}, {}, {}.",
+                    rowIndex, nameField.getText(), licenseField.getText(), dateField.getText(), violationField.getText());
             tableModel.setValueAt(nameField.getText(), rowIndex, 0);
             tableModel.setValueAt(licenseField.getText(), rowIndex, 1);
             tableModel.setValueAt(dateField.getText(), rowIndex, 2);
             tableModel.setValueAt(violationField.getText(), rowIndex, 3);
         }
+        logger.info("Сохранение данных успешно завершено.");
         return true;
     }
 }
