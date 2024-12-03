@@ -5,11 +5,25 @@ import java.io.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Тестовый класс для проверки методов класса {@link Main}.
+ */
 public class MainTest {
 
     private Main app;
     private DefaultTableModel testTableModel;
 
+    /**
+     * Конструктор по умолчанию для тестового класса {@link MainTest}.
+     * Используется для создания экземпляров тестов.
+     */
+    public MainTest() {
+        // Конструктор по умолчанию
+    }
+
+    /**
+     * Инициализирует объект приложения и таблицу перед каждым тестом.
+     */
     @BeforeEach
     public void setUp() {
         app = new Main();
@@ -18,6 +32,12 @@ public class MainTest {
         app.tableModel = testTableModel;
     }
 
+    /**
+     * Тестирует метод {@link Main#saveDataToFile(File)}.
+     * Проверяет, что данные из таблицы корректно сохраняются в файл.
+     *
+     * @throws IOException если произошла ошибка ввода-вывода.
+     */
     @Test
     public void testSaveDataToFile() throws IOException {
         // Создаем временный файл
@@ -36,6 +56,13 @@ public class MainTest {
         }
     }
 
+
+    /**
+     * Тестирует метод {@link Main#loadDataFromFile(File)} с корректными данными.
+     * Проверяет, что данные из файла правильно загружаются в таблицу.
+     *
+     * @throws IOException если произошла ошибка ввода-вывода.
+     */
     @Test
     public void testLoadValidDataFromFile() throws IOException {
         // Загружаем корректный файл
@@ -50,6 +77,10 @@ public class MainTest {
         assertEquals("Превышение скорости", testTableModel.getValueAt(0, 3));
     }
 
+    /**
+     * Тестирует метод {@link Main#loadDataFromFile(File)} с некорректными данными.
+     * Проверяет, что некорректный файл обрабатывается без ошибок.
+     */
     @Test
     public void testLoadInvalidDataFromFile() {
         // Загружаем некорректный файл
@@ -60,6 +91,12 @@ public class MainTest {
         assertEquals(0, testTableModel.getRowCount());
     }
 
+    /**
+     * Тестирует метод {@link Main#saveDataToFile(File)} с пустой таблицей.
+     * Проверяет, что пустая таблица корректно сохраняется в файл.
+     *
+     * @throws IOException если произошла ошибка ввода-вывода.
+     */
     @Test
     public void testSaveEmptyTableToFile() throws IOException {
         // Создаем временный файл

@@ -14,6 +14,9 @@ import java.io.*;
  */
 public class Main {
     private JFrame mainFrame;
+    /**
+     * Таблица, содержащая данные о водителях, их нарушениях и номерах машин.
+     */
     public DefaultTableModel tableModel;
     private JTable dataTable;
     private JButton addDriverButton, editDriverButton, deleteDriverButton, loadDriverButton, saveDriverButton;
