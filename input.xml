@@ -6,6 +6,6 @@
     <driver name="Кузнецова Мария Александровна" license="Д123ЕК77" violationDate="12.12.2023" violationType="Отсутствие страховки"/>
     <driver name="Соколов Сергей Викторович" license="Е456ТР77" violationDate="22.02.2024" violationType="Разворот в неположенном месте"/>
     <driver name="Григорьев Алексей Николаевич" license="М678ОР77" violationDate="10.08.2023" violationType="Неправильная парковка"/>
-    <driver name="Федорова Марина Ивановна" license="Н432КЛ77" violationDate="03.10.2024" violationType="Превышение скорости"/>
-    <driver name="Ковалев Роман Алексеевич" license="П543ЛМ77" violationDate="14.02.2023" violationType="Неоплаченный штраф"/>
+    <driver name="Федорова Марина Ивановна" license="Н432КС77" violationDate="03.10.2024" violationType="Превышение скорости"/>
+    <driver name="Ковалев Роман Алексеевич" license="П543СМ77" violationDate="14.02.2023" violationType="Неоплаченный штраф"/>
 </drivers>
